@@ -159,16 +159,18 @@ Available on Kaggle
 - 10,192 Normal
 - Image format: PNG, 299×299px
 
-### Tech Stack
-| Tool | Purpose
-| TensorFlow 2.15 | Model training and inference
-| Keras | High-level neural network API
-| MobileNetV2 | Pretrained base model (ImageNet)
-| OpenCV | Image processing and Grad-CAM overlay
-| Scikit-learn | Evaluation metrics
-| Streamlit | Web application deployment
-| Matplotlib / Seaborn | Visualizations
-| Pandas / NumPy | Data manipulation
+## Tech Stack
+
+| Tool | Purpose |
+|------|---------|
+| TensorFlow 2.15 | Model training and inference |
+| Keras | High-level neural network API |
+| MobileNetV2 | Pretrained base model (ImageNet) |
+| OpenCV | Image processing and Grad-CAM overlay |
+| Scikit-learn | Evaluation metrics |
+| Streamlit | Web application deployment |
+| Matplotlib / Seaborn | Visualizations |
+| Pandas / NumPy | Data manipulation |
 
 ### Notebook Pipeline
 - The training notebook covers the full ML pipeline:
@@ -190,11 +192,12 @@ Available on Kaggle
 - Add confidence calibration for clinical deployment safety
 - Build REST API with FastAPI for integration with hospital systems
 
-### Author 
-Emakpor Paul 
-AI/ML ENGINEER 
-https://img.shields.io/badge/LinkedIn-paulemakpor-blue 
-https://img.shields.io/badge/GitHub-Emakporpaul-black
+## Author
+
+**Emakpor Paul** - AI/ML Engineer
+
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-paulemakpor-blue)](https://www.linkedin.com/in/paulemakpor/)
+[![GitHub](https://img.shields.io/badge/GitHub-Emakporpaul-black)](https://github.com/Emakporpaul)
 
 
 ## License
