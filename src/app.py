@@ -2,8 +2,10 @@ import streamlit as st
 import tensorflow as tf
 import numpy as np
 import cv2
+import os
+import zipfile
 from pathlib import Path
-from tensorflow.keras.models import load_model
+from huggingface_hub import hf_hub_download
 
 # Page configuration — must be first Streamlit command
 st.set_page_config(
@@ -12,28 +14,35 @@ st.set_page_config(
     layout     = "wide"
 )
 
-# Paths — adjust if running from different directory
-BASE_DIR   = Path(__file__).resolve().parent.parent
-MODELS_DIR = BASE_DIR / 'models'
-
 # Constants
 IMG_HEIGHT  = 224
 IMG_WIDTH   = 224
 CLASS_NAMES = ['COVID', 'NORMAL']
 
 # Load model — cached so it only loads once per session
-from huggingface_hub import hf_hub_download
-
 @st.cache_resource
 def load_classifier():
-    """Download model from Hugging Face and load it"""
-    model_path = hf_hub_download(
+    """
+    Downloads SavedModel zip from Hugging Face and loads it.
+    Uses TF SavedModel format — compatible across TF versions.
+    """
+    # Download zip from Hugging Face
+    zip_path = hf_hub_download(
         repo_id   = "Emakporpaul/covid19-pulmonary-diagnostic",
-        filename  = "final_mobilenet_model.keras",
+        filename  = "mobilenet_savedmodel.zip",
         repo_type = "model"
     )
-    model = load_model(model_path)
+
+    # Extract to /tmp directory
+    extract_dir = "/tmp/mobilenet_savedmodel"
+    if not os.path.exists(extract_dir):
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            zip_ref.extractall("/tmp")
+
+    # Load from SavedModel format — version-agnostic
+    model = tf.saved_model.load(extract_dir)
     return model
+
 
 # Grad-CAM functions
 def make_gradcam_heatmap(img_array, model, last_conv_layer_name='out_relu'):
@@ -42,6 +51,7 @@ def make_gradcam_heatmap(img_array, model, last_conv_layer_name='out_relu'):
     influenced the model's prediction most strongly.
     Uses raw 0-255 pixels — model has preprocess_input baked in.
     Runs head manually to keep gradient connection intact.
+    Only works with Keras model object — not SavedModel.
     """
     base_model      = model.layers[1]   # MobileNetV2 base
     conv_layer      = base_model.get_layer(last_conv_layer_name)
@@ -133,7 +143,7 @@ with st.sidebar:
     st.markdown("**Project:** AI-Powered COVID-19 Pulmonary Diagnostic Assistant with Explainable Deep Learning")
 
 # Load model
-with st.spinner("Loading model..."):
+with st.spinner("Loading model from Hugging Face — this may take a moment..."):
     model = load_classifier()
 
 st.success("Model loaded successfully!")
@@ -147,7 +157,7 @@ uploaded_file = st.file_uploader(
 
 if uploaded_file is not None:
 
-    # Read and preprocess image
+    # Read and resize uploaded image
     file_bytes  = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
     img_bgr     = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
     img_rgb     = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
@@ -158,54 +168,80 @@ if uploaded_file is not None:
     # DO NOT apply preprocess_input here — model handles it internally
     inp = np.expand_dims(arr, axis=0)
 
-    # Run prediction + Grad-CAM
+    # Run prediction + attempt Grad-CAM
     with st.spinner("Analysing X-ray..."):
-        # Single model.predict() call — this is the source of truth
-        pred_prob  = model.predict(inp, verbose=0)[0][0]
+
+        # Prediction — works with both Keras and SavedModel
+        pred_prob  = float(model(inp, training=False)[0][0])
         pred_label = CLASS_NAMES[int(pred_prob > 0.5)]
         confidence = float(pred_prob) if pred_prob > 0.5 else float(1 - pred_prob)
 
-        # Grad-CAM uses same inp — consistent with prediction above
-        heatmap                      = make_gradcam_heatmap(inp, model)
-        img_orig, heatmap_c, overlay = apply_gradcam(arr, heatmap)
+        # Grad-CAM — attempt gracefully, fall back if SavedModel doesn't support it
+        try:
+            heatmap                      = make_gradcam_heatmap(inp, model)
+            img_orig, heatmap_c, overlay = apply_gradcam(arr, heatmap)
+        except Exception:
+            # SavedModel format does not support .get_layer() — graceful fallback
+            heatmap   = None
+            heatmap_c = None
+            overlay   = None
+            img_orig  = arr.astype(np.uint8)
 
     # Prediction Result
     st.divider()
     st.header("Prediction Result")
 
+    # Color code result — red for COVID, green for Normal
     if pred_label == 'COVID':
         st.error(f"**Prediction: {pred_label}** — Confidence: {confidence:.1%}")
     else:
         st.success(f"**Prediction: {pred_label}** — Confidence: {confidence:.1%}")
 
+    # Confidence progress bar
     st.progress(confidence, text=f"Model confidence: {confidence:.1%}")
 
     # Grad-CAM Visualisation
     st.divider()
     st.header("Grad-CAM Explainability")
-    st.markdown("""
-    The heatmap below shows which regions of the X-ray the model 
-    focused on to make its decision. **Red = high attention**, 
-    **Blue = low attention**.
-    """)
 
-    col1, col2, col3 = st.columns(3)
+    if heatmap is not None:
+        # Full Grad-CAM — available in local Keras deployment
+        st.markdown("""
+        The heatmap below shows which regions of the X-ray the model 
+        focused on to make its decision. **Red = high attention**, 
+        **Blue = low attention**.
+        """)
 
-    with col1:
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            st.image(img_orig,
+                     caption="Original X-Ray",
+                     use_container_width=True)
+
+        with col2:
+            st.image(heatmap_c,
+                     caption="Grad-CAM Heatmap (Red = high attention)",
+                     use_container_width=True)
+
+        with col3:
+            # Caption uses same pred_label and confidence — guaranteed consistent
+            st.image(overlay,
+                     caption=f"Overlay — Pred: {pred_label} ({confidence:.1%})",
+                     use_container_width=True)
+
+    else:
+        # Graceful fallback — SavedModel does not support layer access for Grad-CAM
+        st.markdown("""
+        The original X-ray is shown below. Full **Grad-CAM heatmap** 
+        explainability is available in local deployment.
+        """)
         st.image(img_orig,
                  caption="Original X-Ray",
                  use_container_width=True)
-
-    with col2:
-        st.image(heatmap_c,
-                 caption="Grad-CAM Heatmap (Red = high attention)",
-                 use_container_width=True)
-
-    with col3:
-        # Uses same pred_label and confidence as prediction above
-        st.image(overlay,
-                 caption=f"Overlay — Pred: {pred_label} ({confidence:.1%})",
-                 use_container_width=True)
+        st.info(
+            "Grad-CAM visualization requires the full Keras model. "
+            "Run the app locally with `streamlit run src/app.py` to enable it.")
 
     # Medical Disclaimer
     st.divider()
