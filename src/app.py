@@ -41,7 +41,7 @@ def load_classifier():
             extract_dir = tempfile.mkdtemp()
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                 zip_ref.extractall(extract_dir)
-                
+            
             # Find the directory containing saved_model.pb
             saved_model_dir = None
             for root, dirs, files in os.walk(extract_dir):
@@ -55,22 +55,23 @@ def load_classifier():
         
         # Load from SavedModel format
         with st.spinner("🧠 Loading model into memory..."):
-            model = tf.saved_model.load(saved_model_dir)
-        
-        return model
+            loaded = tf.saved_model.load(saved_model_dir)
+            
+            # Get the prediction function
+            # For SavedModel, we need to use the serving_default signature
+            predict_fn = loaded.signatures['serving_default']
+            
+            # Test the model with a dummy input to verify it works
+            dummy_input = tf.zeros((1, IMG_HEIGHT, IMG_WIDTH, 3), dtype=tf.float32)
+            dummy_output = predict_fn(dummy_input)
+            
+        return predict_fn
     
     except Exception as e:
         st.error(f"❌ Failed to load model: {str(e)}")
-        st.info("Please ensure the model is uploaded to Hugging Face at: Emakporpaul/covid19-pulmonary-diagnostic")
+        import traceback
+        st.code(traceback.format_exc())
         st.stop()
-
-# Grad-CAM function (simplified for SavedModel)
-def apply_gradcam_simple(img_array, model):
-    """
-    Simplified Grad-CAM for SavedModel format.
-    Returns the original image since full Grad-CAM requires Keras model.
-    """
-    return img_array.astype(np.uint8), None, None
 
 # App Header
 st.title("🫁 AI-Powered COVID-19 Pulmonary Diagnostic Assistant")
@@ -113,7 +114,7 @@ with st.sidebar:
     st.markdown("**GitHub:** [Project Repository](https://github.com/Emakporpaul/DEEP-LEARNING-PROJECT-ON-LUNGS)")
 
 # Load model
-model = load_classifier()
+predict_fn = load_classifier()
 st.success("✅ Model loaded successfully from Hugging Face!")
 
 # File Upload
@@ -131,13 +132,18 @@ if uploaded_file is not None:
     img_resized = cv2.resize(img_rgb, (IMG_WIDTH, IMG_HEIGHT))
     arr = img_resized.astype(np.float32)
     
-    # Prepare input (raw 0-255 pixels)
-    inp = np.expand_dims(arr, axis=0)
+    # Prepare input (raw 0-255 pixels) - MUST be float32
+    inp = np.expand_dims(arr, axis=0).astype(np.float32)
     
     # Run prediction
     with st.spinner("🔍 Analyzing X-ray..."):
-        # For SavedModel, call with training=False
-        pred_prob = float(model(inp, training=False)[0][0])
+        # Call the SavedModel prediction function
+        outputs = predict_fn(tf.convert_to_tensor(inp))
+        
+        # The output key might be 'dense_3', 'output_0', or 'predictions'
+        # Let's find the first output tensor
+        pred_prob = float(list(outputs.values())[0][0][0])
+        
         pred_label = CLASS_NAMES[int(pred_prob > 0.5)]
         confidence = float(pred_prob) if pred_prob > 0.5 else float(1 - pred_prob)
     
