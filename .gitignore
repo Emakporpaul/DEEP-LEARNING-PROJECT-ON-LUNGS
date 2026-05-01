@@ -1,8 +1,25 @@
+# Virtual environment — never push
 venv/
+
+# Python cache files
 __pycache__/
-.ipynb_checkpoints/
-.env
 *.pyc
+*.pyo
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# Environment variables
+.env
+
+# Dataset — too large for GitHub
 data/
+
+# Trained model files — too large for GitHub
 models/
-outputs/
+*.keras
+*.h5
+
+# OS files
+.DS_Store
+Thumbs.db
