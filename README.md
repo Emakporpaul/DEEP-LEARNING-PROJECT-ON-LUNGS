@@ -57,40 +57,41 @@ correctly identifies 97.82% of all real COVID-19 cases.
 
 ---
 
-## Project Structure
+## Project Structure 
+```text
 DEEP-LEARNING-PROJECT-ON-LUNGS/
 │
 ├── data/
-│ └── lung_dataset/
-│ ├── covid/ # COVID-19 positive X-rays
-│ └── normal/ # Normal X-rays
+│   └── lung_dataset/
+│       ├── covid/               # COVID-19 positive X-rays
+│       └── normal/              # Normal X-rays
 │
 ├── notebooks/
-│ └── deep_learning_lung_project.ipynb # Full training pipeline
+│   └── deep_learning_lung_project.ipynb   # Full training pipeline
 │
 ├── models/
-│ ├── best_cnn.keras
-│ ├── best_mobilenet_phase1.keras
-│ ├── best_mobilenet_phase2.keras
-│ ├── final_cnn_model.keras
-│ └── final_mobilenet_model.keras
+│   ├── best_cnn.keras
+│   ├── best_mobilenet_phase1.keras
+│   ├── best_mobilenet_phase2.keras
+│   ├── final_cnn_model.keras
+│   └── final_mobilenet_model.keras
 │
 ├── outputs/
-│ ├── class_distribution.png
-│ ├── sample_images.png
-│ ├── training_curves.png
-│ ├── custom_cnn_evaluation.png
-│ ├── mobilenetv2_fine-tuned_evaluation.png
-│ ├── gradcam_mobilenetv2_fine-tuned.png
-│ └── model_comparison.csv
+│   ├── class_distribution.png
+│   ├── sample_images.png
+│   ├── training_curves.png
+│   ├── custom_cnn_evaluation.png
+│   ├── mobilenetv2_fine-tuned_evaluation.png
+│   ├── gradcam_mobilenetv2_fine-tuned.png
+│   └── model_comparison.csv
 │
 ├── src/
-│ └── app.py # Streamlit web application
+│   └── app.py                   # Streamlit web application
 │
 ├── requirements.txt
 ├── requirements-complete.txt
 └── README.md
-
+```
 
 ---
 
@@ -189,11 +190,12 @@ Available on Kaggle
 - Add confidence calibration for clinical deployment safety
 - Build REST API with FastAPI for integration with hospital systems
 
-### Author
-Emakpor Paul
-AI/ML ENGINEER
-https://img.shields.io/badge/LinkedIn-paulemakpor-blue
+### Author 
+Emakpor Paul 
+AI/ML ENGINEER 
+https://img.shields.io/badge/LinkedIn-paulemakpor-blue 
 https://img.shields.io/badge/GitHub-Emakporpaul-black
+
 
 ## License
 This project is licensed under the MIT License — see the LICENSE file for details.
