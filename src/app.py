@@ -22,11 +22,17 @@ IMG_WIDTH   = 224
 CLASS_NAMES = ['COVID', 'NORMAL']
 
 # Load model — cached so it only loads once per session
+from huggingface_hub import hf_hub_download
+
 @st.cache_resource
 def load_classifier():
-    """Load the best MobileNetV2 model — cached for performance"""
-    model_path = MODELS_DIR / 'final_mobilenet_model.keras'
-    model      = load_model(str(model_path))
+    """Download model from Hugging Face and load it"""
+    model_path = hf_hub_download(
+        repo_id   = "Emakporpaul/covid19-pulmonary-diagnostic",
+        filename  = "final_mobilenet_model.keras",
+        repo_type = "model"
+    )
+    model = load_model(model_path)
     return model
 
 # Grad-CAM functions
